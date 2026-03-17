@@ -1,5 +1,5 @@
 # bolls-api-bash
-A utility for easily accessing the [bolls.life API](https://bolls.life/api) to get specific portions of the Bible from a Bash terminal or script. Human-readable text is the default, but can be changed to raw JSON for scripting or whatever with the ```-j``` / ```--raw-json``` flag (see Usage section below).
+A utility for easily accessing the [bolls.life API](https://bolls.life/api/) to get specific portions of the Bible from a Bash terminal or script. Human-readable text is the default, but can be changed to raw JSON for scripting or whatever with the ```-j``` / ```--raw-json``` flag (see Usage section below).
 
 ## Dependencies
 Required: ```python3```, ```curl```, and internet access.
@@ -10,7 +10,7 @@ Optional: ```jq``` (required for pretty-printing and other formatting)
 Download bolls.sh, put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. If your terminal and/or scripts do not use Bash, you'll have to translate this script to another Shell language. 
 
 ## License
-I put this under the CC0 (public domain) license since the code was written by AI. Only the ideas and a couple small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life))!
+I put this under the CC0 (public domain) license since the code was written by AI. Only the ideas and a couple small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life/))!
 
 ## Usage
 (taken from ```bolls --help```)
@@ -63,7 +63,6 @@ Examples:
 bolls --define BDBT אֹ֑ור
 ```
 ## TODO
-* for ```--chapter``` specifically, make only the "text" attributes available when formatting is enabled
-* add a ```--search``` / ```-s``` flag using https://bolls.life/api/#Search
-* maybe add ```--no-comments``` / ```-n``` flag to get a chapter with no commentary using bolls.life/get-text
-* maybe add an ```--everything``` / ```-e``` flag to get an entire translation using bolls.life/static/translations/<translation>.json
+* for ```--chapter``` specifically, make only the "text" (and optionally "comment" using [bolls.life/get-text](https://bolls.life/get-text/) instead of [bolls.life/get-chapter](https://bolls.life/get-chapter/) with a ```no-comments``` /```-c``` flag) attributes available when formatting is enabled
+* add a ```--search``` / ```-s``` flag using [bolls.life/api/#Search](https://bolls.life/api/#Search)
+* maybe add an ```--everything``` / ```-e``` flag to get an entire translation using [bolls.life/static/translations/<translation>.json](https;//bolls.life/static/translations/<translation>.json)
