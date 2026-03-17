@@ -4,13 +4,15 @@ A utility for easily accessing the [bolls.life API](https://bolls.life/api/) to 
 ## Dependencies
 Required: ```python3```, ```curl```, and internet access.
 
-Optional: ```jq``` (required for pretty-printing and other formatting)
+Optional (but recommended): ```jq``` (required for pretty-printing and formatting the JSON the API provides)
 
 ## Installation
-Download bolls.sh, put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. If your terminal and/or scripts do not use Bash, you'll have to translate this script to another Shell language. 
+Download bolls.sh, put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. If your terminal and/or scripts do not use Bash, you'll have to translate this script to the Shell language you use. 
+
+It'd probably be better if this was all Python or another non-Shell language, but when I started the project I didn't need any fancy Python stuff. I may consider changing it once all the major features I want are finished.
 
 ## License
-I put this under the CC0 (public domain) license since the code was written by AI. Only the ideas and a couple small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life/))! Credit is appreciated but not required, as per the CC0 licence.
+I put this under the CC0 (public domain) license since the code was written by Codex-5.2 (generative AI). Only the ideas and some small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life/))! Credit is appreciated but not required, as per the CC0 licence.
 
 ## Usage
 (taken from ```bolls --help```)
