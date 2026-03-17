@@ -47,18 +47,23 @@ Modifier flags:
 
   ```-i``` / ```--include-all``` - Include all JSON keys in -v and -c
 
+  ```-n``` / ```--no-comment``` - Remove commentary from -c
+
 Examples:
-  ```bolls --translations
+```
+  bolls --translations
   bolls -d
   bolls --books AMP
-  bolls -a MSG
-  bolls --verse '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-  bolls -s NIV Luke 2 '15,16,17'
-  bolls --parallel 'NKJV,NLT' John 1 '1,2,3,4,5'
-  bolls -p '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}'
-bolls --define BDBT אֹ֑ור
+  bolls -r MSG
+  bolls --chapter -n Genesis 1
+  bolls -v -i '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
+  bolls --verse NIV Luke 2 '15,16,17'
+  bolls -p 'NKJV,NLT' John 1 '1,2,3,4,5'
+  bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
+  bolls -s YLT haggi --match-case false --match-whole-word true --page-limit 128 --page 1
+  bolls --search KJV love --book Genesis
+  bolls -f BDBT אֹ֑וראֹ֑ור
 ```
 ## TODO
-* add a ```--search``` / ```-s``` flag using [bolls.life/api/#Search](https://bolls.life/api/#Search)
-* add a ```-n``` / ```--no-comments``` flag that removes the ```comment``` JSON key for ```-c``` / ```--chapter```
-* don't show "text:" before every verse for ```-v``` and maybe ```-c -n```
+* Update README with latest changes
+* Maybe translate into Python with ```pycurl``` and ```jq```
