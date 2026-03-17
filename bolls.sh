@@ -331,8 +331,8 @@ Flags:
   Get one or multiple verses from the same chapter
 
   -p / --parallel <translations> <book> <chapter> <verse(s)> OR --parallel <JSON array or file>
-  Compare one or multiple verses across translations
-  (the translations must have the same books, or it will compare different verses)
+  Compare one or multiple verses from the same chapter across translations
+  (the translations must have the same books, or this will compare different verses)
 
   -r / --random <translation>
   Get a random verse
@@ -341,8 +341,7 @@ Flags:
   Get definitions for a Hebrew or Greek word
 
   -j / --raw-json
-  Use with another flag to output raw JSON
-  (disable pretty-printing and other formatting)
+  Use with another flag to disable formatting
 
 Note:
   <book> can be a number or a name (case-insensitive), even in JSON files.
