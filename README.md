@@ -10,7 +10,7 @@ Optional: ```jq``` (required for pretty-printing and other formatting)
 Download bolls.sh, put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. If your terminal and/or scripts do not use Bash, you'll have to translate this script to another Shell language. 
 
 ## License
-I put this under the CC0 (public domain) license since the code was written by AI. Only the ideas and a couple small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life/))!
+I put this under the CC0 (public domain) license since the code was written by AI. Only the ideas and a couple small edits are truly mine. Feel free to use this in your own projects if you would like (especially the people at [bolls.life](https://bolls.life/))! Credit is appreciated but not required, as per the CC0 licence.
 
 ## Usage
 (taken from ```bolls --help```)
