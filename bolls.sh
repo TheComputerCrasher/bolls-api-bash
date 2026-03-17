@@ -2,11 +2,13 @@
 bolls() {
   local base="https://bolls.life"
   local raw_json=0
+  local include_all=0
   local _args=()
   local _a
   for _a in "$@"; do
     case "$_a" in
       -j|--raw-json) raw_json=1 ;;
+      -i|--include-all) include_all=1 ;;
       *) _args+=("$_a") ;;
     esac
   done
@@ -21,6 +23,7 @@ bolls() {
   # helper: pretty-print JSON if jq is available
   _bolls_pretty() {
     local json="$1"
+    local jq_prefix="${2:-}"
     if [[ "$raw_json" -eq 1 ]]; then
       printf '%s' "$json"
       return 0
@@ -70,23 +73,46 @@ fmt(.;0)
 
 JQ
 )"
-      printf '%s' "$json" | jq -r "$filter"
+      if [[ -n "$jq_prefix" ]]; then
+        printf '%s' "$json" | jq -r "$jq_prefix | $filter"
+      else
+        printf '%s' "$json" | jq -r "$filter"
+      fi
     else
       printf '%s' "$json"
     fi
   }
 
+  # helper: jq prefix to keep only text/comment keys
+  _bolls_jq_text_comment() {
+    cat <<'JQ'
+
+def keep_text_comment:
+  if type == "array" then map(keep_text_comment)
+  elif type == "object" then
+    {text}
+    + (if (has("comment") and .comment != null) then {comment} else {} end)
+  else .
+  end;
+
+keep_text_comment
+
+JQ
+  }
+
+
   # helper: perform GET
   _bolls_get() {
     local url="$1"
+    local jq_prefix="${2:-}"
     local out
     out="$(curl -sS --fail "$url")" || return $?
-    _bolls_pretty "$out"
+    _bolls_pretty "$out" "$jq_prefix"
   }
 
   # helper: perform POST with JSON body (string or file)
   _bolls_post() {
-    local url="$1"; local body="$2"
+    local url="$1"; local body="$2"; local jq_prefix="${3:-}"
     if [[ -z "$body" ]]; then
       echo "Error: POST body required" >&2; return 2
     fi
@@ -97,7 +123,7 @@ JQ
     else
       out="$(curl -sS --fail -H "Content-Type: application/json" -d "$body" "$url")" || return $?
     fi
-    _bolls_pretty "$out"
+    _bolls_pretty "$out" "$jq_prefix"
   }
 
   # helper: validate JSON string or file
@@ -334,19 +360,23 @@ Command flags:
   Compare one or multiple verses from the same chapter across translations
   (the translations must have the same books, or this will compare different verses)
 
-  -r / --random <translation> 
+  -r / --random <translation>
   Get a random verse
 
   -f / --define <dictionary> <Hebrew/Greek word>
   Get definitions for a Hebrew or Greek word
 
-Note:
+Notes:
   <book> can be a number or a name (case-insensitive).
+  <translation> must be the abbreviation, not the full name.
 
 Modifier flags:
 
   -j / --raw-json
   Disable formatting
+
+  -i / --include-all
+  Include all JSON keys in -v and -c
 
 Examples:
   bolls --translations
@@ -354,7 +384,7 @@ Examples:
   bolls --books AMP
   bolls -r MSG
   bolls --verse '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-  bolls -v NIV Luke 2 '15,16,17'
+  bolls -s NIV Luke 2 '15,16,17'
   bolls --parallel 'NKJV,NLT' John 1 '1,2,3,4,5'
   bolls -p '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}'
   bolls --define BDBT אֹ֑ור
@@ -373,14 +403,26 @@ USAGE
       if [[ -z "$1" || -z "$2" || -z "$3" ]]; then echo "Usage: bolls --chapter <translation> <book> <chapter>" >&2; return 2; fi
       local book_id
       book_id="$(_bolls_book_to_id "$1" "$2")" || return $?
-      _bolls_get "$base/get-chapter/${1}/${book_id}/${3}/" ;;
+      local jq_text_comment
+      if [[ "$include_all" -eq 1 ]]; then
+        jq_text_comment=""
+      else
+        jq_text_comment="$(_bolls_jq_text_comment)"
+      fi
+      _bolls_get "$base/get-chapter/${1}/${book_id}/${3}/" "$jq_text_comment" ;;
     --verse|-v)
       # accepts full JSON array/file OR simple args
       if [[ -z "$1" ]]; then echo "Usage: bolls --verse <translation> <book> <chapter> <verses> OR bolls --verse <JSON array or file>" >&2; return 2; fi
+      local jq_text_comment
+      if [[ "$include_all" -eq 1 ]]; then
+        jq_text_comment=""
+      else
+        jq_text_comment="$(_bolls_jq_text_comment)"
+      fi
       if [[ -z "$2" && -z "$3" && -z "$4" ]]; then
         local body
         body="$(_bolls_normalize_books_in_json "$1" get-verses)" || return $?
-        _bolls_post "$base/get-verses/" "$body"
+        _bolls_post "$base/get-verses/" "$body" "$jq_text_comment"
         return $?
       fi
       if [[ -z "$2" || -z "$3" || -z "$4" ]]; then echo "Usage: bolls --verse <translation> <book> <chapter> <verses> OR bolls --verse <JSON array or file>" >&2; return 2; fi
@@ -399,7 +441,7 @@ USAGE
       local body
       body="$(printf '[{\"translation\":\"%s\",\"book\":%s,\"chapter\":%s,\"verses\":%s}]' "$translation" "$book_id" "$chapter" "$verses_json")"
       _bolls_validate_json "$body" || return $?
-      _bolls_post "$base/get-verses/" "$body" ;;
+      _bolls_post "$base/get-verses/" "$body" "$jq_text_comment" ;;
     --parallel|-p)
       # accepts full JSON object/file OR simple args
       if [[ -z "$1" ]]; then echo "Usage: bolls --parallel <translations> <book> <chapter> <verses> OR bolls parallel <JSON array or file>" >&2; return 2; fi
@@ -448,7 +490,6 @@ USAGE
     -*)
       echo "Unknown flag: $cmd" >&2; return 2 ;;
     *)
-      echo "Unknown command: $cmd" >&2; return 2 ;;
-
+      echo "Unknown subcommand: $cmd" >&2; return 2 ;;
   esac
 }
