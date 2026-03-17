@@ -1,4 +1,4 @@
-# bolls: simple wrapper for bolls.life API
+# bolls.sh: Bash client for bolls.life API
 bolls() {
   local base="https://bolls.life"
   local raw_json=0
