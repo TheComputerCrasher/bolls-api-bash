@@ -52,12 +52,11 @@ Note:
   <book> can be a number or a name (case-insensitive), even in JSON files.
 
 Examples:
-  ```bolls -t
-  bolls --list-dictionaries
-  bolls -b AMP
-  bolls --verse ESV John 3 16
+  ```bolls --translations
+  bolls -d
+  bolls --books AMP
   bolls -a MSG
-  bolls --get-verses '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
+  bolls --verse '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
   bolls -s NIV Luke 2 '15,16,17'
   bolls --parallel 'NKJV,NLT' John 1 '1,2,3,4,5'
   bolls -p '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}'
