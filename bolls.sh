@@ -6,7 +6,7 @@ bolls() {
   local _a
   for _a in "$@"; do
     case "$_a" in
-      -r|--raw-json) raw_json=1 ;;
+      -j|--raw-json) raw_json=1 ;;
       *) _args+=("$_a") ;;
     esac
   done
@@ -178,7 +178,7 @@ except Exception as e:
     print(f"Error: invalid translations JSON: {e}", file=sys.stderr)
     sys.exit(2)
 if not isinstance(data, list) or not data:
-    print("Error: translations list is empty", file=sys.stderr)
+    print("Error: translations list is empty!", file=sys.stderr)
     sys.exit(2)
 print(data[0])
 PY
@@ -209,7 +209,7 @@ with open(path, 'r', encoding='utf-8') as f:
 keys = {k.lower(): k for k in data.keys()}
 tkey = translation.lower()
 if tkey not in keys:
-    print(f"Error: unknown translation '{translation}' for book lookup", file=sys.stderr)
+    print(f"Error: unknown translation '{translation}' for book lookup. \nTry bolls -t to see all available translations, and be sure to use the abbreviation.", file=sys.stderr)
     sys.exit(2)
 t = keys[tkey]
 target = norm(book)
@@ -226,9 +226,9 @@ if len(candidates) == 1:
     print(candidates[0].get('bookid'))
     sys.exit(0)
 if len(candidates) > 1:
-    print(f"Error: book name '{book}' is ambiguous for translation '{t}'", file=sys.stderr)
+    print(f"Error: book name '{book}' is ambiguous for translation '{t}'.", file=sys.stderr)
     sys.exit(2)
-print(f"Error: unknown book '{book}' for translation '{t}'", file=sys.stderr)
+print(f"Error: unknown book '{book}' for translation '{t}'. \nTry bolls -b '{t}' to find what book you\'re looking for.", file=sys.stderr)
 sys.exit(2)
 PY
   }
@@ -263,7 +263,7 @@ def book_to_id(translation, book):
         return book
     tkey = translation.lower()
     if tkey not in keys:
-        raise ValueError(f"unknown translation '{translation}' for book lookup")
+        raise ValueError(f"unknown translation '{translation}' for book lookup. \nTry bolls -t to see all available translations, and be sure to use the abbreviation.")
     t = keys[tkey]
     target = norm(book)
     candidates = []
@@ -278,7 +278,7 @@ def book_to_id(translation, book):
         return candidates[0].get('bookid')
     if len(candidates) > 1:
         raise ValueError(f"book name '{book}' is ambiguous for translation '{t}'")
-    raise ValueError(f"unknown book '{book}' for translation '{t}'")
+    raise ValueError(f"unknown book '{book}' for translation '{t}'. \nTry bolls -b '{t}' to find what book you\'re looking for.")
 try:
     obj = load_arg(json_in)
     if mode == 'get-verses':
@@ -334,7 +334,7 @@ Command flags:
   Compare one or multiple verses from the same chapter across translations
   (the translations must have the same books, or this will compare different verses)
 
-  -r / --random <translation>
+  -r / --random <translation> 
   Get a random verse
 
   -f / --define <dictionary> <Hebrew/Greek word>
@@ -354,7 +354,7 @@ Examples:
   bolls --books AMP
   bolls -r MSG
   bolls --verse '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-  bolls -s NIV Luke 2 '15,16,17'
+  bolls -v NIV Luke 2 '15,16,17'
   bolls --parallel 'NKJV,NLT' John 1 '1,2,3,4,5'
   bolls -p '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}'
   bolls --define BDBT אֹ֑ור
@@ -435,7 +435,7 @@ USAGE
       body="$(printf '{\"translations\":%s,\"verses\":%s,\"book\":%s,\"chapter\":%s}' "$translations_json" "$verses_json" "$book_id" "$chapter")"
       _bolls_validate_json "$body" || return $?
       _bolls_post "$base/get-parallel-verses/" "$body" ;;
-    --random|-a)
+    --random|-r)
       if [[ -z "$1" ]]; then echo "Usage: bolls --random <translation>" >&2; return 2; fi
       _bolls_get "$base/get-random-verse/${1}/" ;;
     --define|-f)
