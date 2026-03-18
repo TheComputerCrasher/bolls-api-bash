@@ -7,7 +7,7 @@ bolls.sh: [```python```](https://github.com/python/cpython), [```curl```](https:
 bolls.py: [```python```](https://github.com/python/cpython) (obviously), [```pycurl```](https://pypi.org/project/pycurl/), [```jq```](https://pypi.org/project/jq/), and internet acess.
 
 ## Installation
-bolls.sh: Download [bolls.sh](/bolls.sh), put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. If your terminal and/or scripts do not use Bash, you'll have to translate this script to the Shell language you use. This automatically gives it the command name ```bolls```.
+bolls.sh: Download [bolls.sh](/bolls.sh), put it wherever you'd like, and add ```source /path/to/bolls.sh``` to your .bashrc. This automatically gives it the command name ```bolls```. 
 
 bolls.py: Download [bolls.py](/bolls.py), put it wherever you'd like, and run ```python3 /path/to/bolls.py``` ```<subcommands>```. I recommend putting this under an alias like ```bolls``` (or maybe ```bolls-py``` if you also have bolls.sh installed).
 
