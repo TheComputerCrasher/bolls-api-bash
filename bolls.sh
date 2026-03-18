@@ -1,4 +1,5 @@
 # bolls.sh: Bash client for bolls.life API
+
 bolls() {
   local base="https://bolls.life"
   local raw_json=0
@@ -433,9 +434,9 @@ Command flags (choose one):
   Search verses by text
   Search options (choose any amount or none):
 
-    --match_case <true/false>
+    --match-case <true/false>
 
-    --match_whole-word <true/false>
+    --match-whole-word <true/false>
 
     --book <book name/book number/ot/nt>
 
@@ -447,7 +448,8 @@ Notes:
   <book> can be a number or a name (case-insensitive).
   <translation> must be the abbreviation, not the full name (case-insensitive).
 
-Modifier flags (choose one):
+
+Modifier flags (choose one or none):
 
   -j / --raw-json
   Disable formatting
@@ -456,20 +458,21 @@ Modifier flags (choose one):
   Include all JSON keys ("pk:", "translation:", "book", etc.) in -v and -c
 
   -n / --no-comment
-  Remove commentary
+  Remove commentary from -c
+
 
 Examples:
   bolls --translations
   bolls -d
   bolls --books AMP
-  bolls -r MSG
+  bolls -r msg
   bolls --chapter -n Genesis 1
   bolls -v -i '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-  bolls --verse NIV Luke 2 '15,16,17'
+  bolls --verse niv Luke 2 '15,16,17'
   bolls -p 'NKJV,NLT' John 1 '1,2,3,4,5'
   bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
   bolls -s YLT haggi --match_case false --match_whole-word true --page-limit 128 --page 1
-  bolls --search KJV love --book Genesis
+  bolls --search kjv love --book Genesis
   bolls -f BDBT אֹ֑ור
 
 USAGE
@@ -550,13 +553,13 @@ USAGE
         case "$1" in
           --match_case|--match-case)
             match_case="$2"; shift 2 ;;
-          --match_whole|--match-whole|--match-whole-word)
+          --match_whole|--match-whole|--match_whole_word|--match-whole-word)
             match_whole="$2"; shift 2 ;;
           --book)
             book="$2"; shift 2 ;;
           --page)
             page="$2"; shift 2 ;;
-          --limit|--page-limit)
+          --limit|--page_limit|--page-limit)
             limit="$2"; shift 2 ;;
           *)
             echo "Unknown search option: $1" >&2; return 2 ;;
