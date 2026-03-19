@@ -81,4 +81,4 @@ bolls -f BDBT אֹ֑ור
 ```
 
 ## TODO
-* Nothing at the moment
+* Maybe figure out how I want to share this with the internet, but this is kinda a niche project and anyone can freely edit if they find it so may not be worth it
