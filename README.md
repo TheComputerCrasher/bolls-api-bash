@@ -34,7 +34,7 @@ Command flags:
 
   ```-r``` / ```--random``` ```<translation>``` - Get a random verse
 
-  ```-f``` / ```--define``` ```<dictionary> <Hebrew/Greek word>``` - Get definitions for a Hebrew or Greek word
+  ```-D``` / ```--define``` ```<dictionary> <Hebrew/Greek word>``` - Get definitions for a Hebrew or Greek word
 
   ```-p``` / ```--parallel``` ```<translations> <book> <chapter> <verse(s)>``` OR ```--parallel``` ```<JSON array or file>``` - Compare one or multiple verses from the same chapter across translations (the translations must have the same books, or this will compare different verses)
 
@@ -42,15 +42,15 @@ Command flags:
 
   Search options:
 
-  ```--match-case``` ```<true/false>```
+  ```-m``` / ```--match-case``` ```<true/false>``` - Makes search case-sensitive
 
-  ```--match-whole-word``` ```<true/false>```
+  ```-w``` / ```--match-whole-word``` ```<true/false>``` - Only search complete matches (e.g. "Dan" instead of "Daniel")
 
-  ```--book ``` ```<book/ot/nt>```
+  ```-B``` / ```--book ``` ```<book/ot/nt>``` - Search in a specific book, or in just the Old or New Testament
 
-  ```--page``` ```<#>```
+  ```-P``` / ```--page``` ```<#>``` - Go to a specific page of the search results
 
-  ```--page-limit``` ```<#>```
+  ```-l``` / ```--page-limit``` ```<#>``` - Limits the number of pages of search results
 
 Notes:
 
@@ -62,27 +62,28 @@ Modifier flags:
 
   ```-j``` / ```--raw-json``` - Disable formatting
 
-  ```-i``` / ```--include-all``` - Include all JSON keys in -v and -c
+  ```-i``` / ```--include-all``` - Include everything (verse id, translation, book number, etc.) in -v and -c
 
-  ```-o``` / ```--include-comments``` - Include commentary in -c
+  ```-C``` / ```--include-comments``` - Include commentary in -c
 
 Examples:
 ```
-bolls --translations
-bolls -d
-bolls --books AMP
-bolls -r msg
-bolls --chapter -o Genesis 1
-bolls -v -i '[{"translation":"niv","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-bolls --verse niv luke 2 '15,16,17'
-bolls -p 'NKJV,NLT' John 1 '1,2,3,4,5'
-bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
-bolls -s YLT haggi --match-case false --match-whole-word true --page-limit 128 --page 1
-bolls --search kjv love --book genesis
-bolls -f BDBT אֹ֑ור
+  bolls --translations
+  bolls -d
+  bolls --books AMP
+  bolls -r msg
+  bolls --chapter -C Genesis 1
+  bolls -v -a '[{"translation":"niv","book":Luke,"chapter":2,"verses":[15,16,17]}]'
+  bolls --verse niv luke 2 '15,16,17'
+  bolls -p 'NKJV,NLT' John 1 '1,2,3,4,5'
+  bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
+  bolls -s YLT haggi --match-case --match-whole-word --page-limit 128 --page 1
+  bolls --search kjv love -B genesis
+  bolls -D BDBT אֹ֑ור
 ```
 
 ## TODO
-* Change some flag shortcuts to capital letters, e.g. ```-o``` to ```-C``` and ```-f``` to ```-D```
+* Change ```-m``` and ```-w``` to not need a second parameter because there's only 2 options (true/false)
+* ```--match-whole-word``` might be broken?
 * Figure out how this would work for anyone running bolls.life locally as per the [official docs](https://github.com/Bolls-Bible/bain/blob/master/docs/LOCAL_DEV_WITH_DOCKER_COMPOSER.md)
 * Maybe figure out how I want to share this with the internet, but this is kinda a niche project and anyone can freely edit if they find it so may not be worth it
