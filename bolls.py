@@ -130,15 +130,20 @@ Command flags (choose one):
   Search verses by text
   Search options (choose any amount or none):
 
-    -m / --match-case <true/false>
+    -m / --match-case
+    Makes search case-sensitive
 
-    -w / --match-whole-word <true/false>
+    -w / --match-whole
+    Only search exact matches (currently not working?)
 
     -B / --book <book/ot/nt>
+    Search in a specific book, or in just the Old or New Testament
 
     -P / --page <#>
+    Go to a specific page of the search results
     
     -l / --page-limit <#>
+    Limits the number of pages of search results
 
 Notes:
   <book> can be a number or a name (case-insensitive).
@@ -151,7 +156,7 @@ Modifier flags (choose one or none):
   Disable formatting
 
   -a / --include-all
-  Include all JSON keys ("pk:", "translation:", "book", etc.) in -v and -c
+  Include everything (verse id, translation, book number, etc.) in -v and -c
 
   -C / --include-comments
   Include commentary in -c
@@ -167,7 +172,7 @@ Examples:
   bolls --verse niv luke 2 '15,16,17'
   bolls -p 'NKJV,NLT' John 1 '1,2,3,4,5'
   bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
-  bolls -s YLT haggi --match-case false --match-whole-word true --page-limit 128 --page 1
+  bolls -s YLT haggi --match-case --match-whole-word --page-limit 128 --page 1
   bolls --search kjv love -B genesis
   bolls -D BDBT אֹ֑ור
 
@@ -572,8 +577,8 @@ def main(argv: list[str]) -> int:
             if len(rest) < 2:
                 print(
                     "Usage: bolls --search <translation> <search term> "
-                    "[--match_case <true/false>] [--match_whole <true/false>] "
-                    "[--book <book/ot/nt>] [--page <int>] [--limit <int>]",
+                    "[--match-case] [--match-whole] "
+                    "[--book <book/ot/nt>] [--page <#>] [--limit <#>]",
                     file=sys.stderr,
                 )
                 return 2
@@ -589,15 +594,9 @@ def main(argv: list[str]) -> int:
             while i < len(opts):
                 opt = opts[i]
                 if opt in ("--match_case", "--match-case", "-m"):
-                    if i + 1 >= len(opts):
-                        raise ValueError("Missing value for --match-case")
-                    match_case = opts[i + 1]
-                    i += 2
-                elif opt in ("--match_whole", "--match-whole", "--match-whole-word", "-w"):
-                    if i + 1 >= len(opts):
-                        raise ValueError("Missing value for --match-whole-word")
-                    match_whole = opts[i + 1]
-                    i += 2
+                    match_case = True
+                elif opt in ("--match_whole", "--match-whole", "-w"):
+                    match_whole = True
                 elif opt in ("--book", "-B"):
                     if i + 1 >= len(opts):
                         raise ValueError("Missing value for --book")
@@ -624,9 +623,9 @@ def main(argv: list[str]) -> int:
                     book = str(_book_to_id(translation, book))
             query = f"search={_urlencode(piece)}"
             if match_case is not None:
-                query += f"&match_case={_urlencode(match_case)}"
+                query += f"&match_case={_urlencode("true")}"
             if match_whole is not None:
-                query += f"&match_whole={_urlencode(match_whole)}"
+                query += f"&match_whole={_urlencode("true")}"
             if book is not None:
                 query += f"&book={_urlencode(book)}"
             if page is not None:
