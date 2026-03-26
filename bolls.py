@@ -143,10 +143,9 @@ Command flags (choose one):
     Limits the number of pages of search results
 
 Notes:
-  <translation> must be the abbreviation, not the full name (case-insensitive).
+  <translation> must be the abbreviation, not the full name (case-insensitive). Multiple translations are separated by commas.
   <book> can be a number or a name (case-insensitive).
-  Multiple translations can be comma-separated; -v/-c will use parallel output.
-  <verse(s)> can be a single number, multiple numbers in a list (e.g. 1,5,9), or a range (e.g. 13-17).
+  <verse(s)> can be a single number, multiple numbers separated by commas (e.g. 1,5,9), or a range (e.g. 13-17).
 
 
 Modifier flags (choose one or none):
