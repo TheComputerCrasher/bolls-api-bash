@@ -54,9 +54,9 @@ Notes:
 
 * ```<book>``` can be a number or a name (case-insensitive).
 
-* ```<translation>``` must be the abbreviation, not the full name (case-insensitive).
+* ```<translation>``` must be the abbreviation, not the full name (case-insensitive). Multiple translations are separated by commas (e.g. ESV,KJV).
 
-* ```<verse(s)>``` can be a single number, multiple numbers in a list (e.g. '1,5,9'), or a range (e.g. 13-17).
+* ```<verse(s)>``` can be a single number, multiple numbers separated by commas (e.g. 1,5,9), or a range (e.g. 13-17).
 
 Modifier flags (choose one or none):
 
