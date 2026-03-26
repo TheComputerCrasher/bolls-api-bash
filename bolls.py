@@ -605,8 +605,7 @@ def main(argv: list[str]) -> int:
         if cmd in ("-v", "--verse"):
             if not rest:
                 print(
-                    "Usage: bolls --verse <translation(s)> <book> <chapter> <verse(s)> "
-                    "or: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
+                    "Usage: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
                     file=sys.stderr,
                 )
                 return 2
@@ -620,8 +619,7 @@ def main(argv: list[str]) -> int:
             ref_args = rest[1:]
             if not ref_args:
                 print(
-                    "Usage: bolls --verse <translation(s)> <book> <chapter> <verse(s)> "
-                    "or: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
+                    "Usage: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
                     file=sys.stderr,
                 )
                 return 2
@@ -654,7 +652,7 @@ def main(argv: list[str]) -> int:
             _print_json(raw, raw_json, jq_prefix)
             return 0
 
-        if cmd in ("-p", "--parallel"):
+        if cmd in ("--parallel"):
 
             if not rest:
                 print(
@@ -732,7 +730,7 @@ def main(argv: list[str]) -> int:
                         book = opts[i + 1]
                         i += 2
                         continue
-                    if opt in ("--page", "-P"):
+                    if opt in ("--page", "-p"):
                         if i + 1 >= len(opts):
                             raise ValueError("Missing value for --page")
                         page = opts[i + 1]
