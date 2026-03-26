@@ -21,6 +21,7 @@ except Exception:
     jqmod = None
 
 BASE_URL = "https://bolls.life"
+PARALLEL_CHAPTER_MAX_VERSE = 500
 
 JQ_PRETTY_FILTER = r"""
 
@@ -110,10 +111,10 @@ Command flags (choose one):
   -b / --books <translation>
   List all books of a chosen translation
 
-  -v / --verse <translation> <book> <chapter>:<verse(s)>
+  -v / --verse <translation(s)> <book> <chapter>:<verse(s)>
   Get one or multiple verses from the same chapter
 
-  -c / --chapter <translation> <book> <chapter>
+  -c / --chapter <translation(s)> <book> <chapter>
   Get an entire chapter
 
   -r / --random <translation>
@@ -122,19 +123,15 @@ Command flags (choose one):
   -D / --define <dictionary> <Hebrew/Greek word>
   Get definitions for a Hebrew or Greek word
 
-  -p / --parallel <translations> <book> <chapter>:<verse(s)>
-  Compare verses across translations
-
-  -s / --search <translation> <search term> [options]
+  -s / --search <translation> [options] <search term>
   Search verses by text
 
   Search options (choose any amount or none):
-
     -m / --match-case
     Make search case-sensitive
 
     -w / --match-whole
-    Only search exact phrase matches (currently not working because it requires spaces)
+    Only search exact phrase matches (requires multiple words)
 
     -B / --book <book/ot/nt>
     Search in a specific book, or in just the Old or New Testament
@@ -148,11 +145,11 @@ Command flags (choose one):
 Notes:
   <translation> must be the abbreviation, not the full name (case-insensitive).
   <book> can be a number or a name (case-insensitive).
-  <verse(s)> can be a single number, multiple numbers in a list (e.g. '1,5,9'), or a range (e.g. 13-17)
+  Multiple translations can be comma-separated; -v/-c will use parallel output.
+  <verse(s)> can be a single number, multiple numbers in a list (e.g. 1,5,9), or a range (e.g. 13-17).
 
 
 Modifier flags (choose one or none):
-
   -j / --raw-json
   Disable formatting
 
@@ -167,15 +164,14 @@ Examples:
   bolls --translations
   bolls -d
   bolls --books AMP
-  bolls -r msg
-  bolls --chapter -C Genesis 1
-  bolls -v -a '[{"translation":"NIV","book":Luke,"chapter":2,"verses":[15,16,17]}]'
-  bolls --verse NIV luke 2:15-17
-  bolls -v niv Luke 2 '15,16,17'
-  bolls -p 'nkjv,nlt' John 1:1-5
-  bolls --parallel '{"translations":["NKJV","NLT"],"book":62,"chapter"1,"verses":[1,2,3,4,5]}' -j
-  bolls -s YLT haggi --match-case --match-whole-word --page-limit 128 --page 1
-  bolls --search kjv love -B genesis
+  bolls -r msg -j
+  bolls --chapter esv Genesis 1
+  bolls -c esv 1 1 -j
+  bolls --chapter nlt,nkjv genesis 1
+  bolls -v NIV Luke 2:15-17
+  bolls --verse niv,nkjv genesis 1:1-3 -C
+  bolls -s ylt -m -w -l 3 -P 1 Jesus wept
+  bolls --search YLT --match-case --match-whole --page-limit 3 --page 1 Jesus wept
   bolls -D BDBT אֹ֑ור
 
 """.strip()
@@ -327,7 +323,7 @@ def _parse_verses_spec(spec: str) -> list[int]:
     for part in parts:
         if not part:
             continue
-        m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+        m = re.fullmatch(r"(\d+)\s*[-–—]\s*(\d+)", part)
         if m:
             start = int(m.group(1))
             end = int(m.group(2))
@@ -372,6 +368,44 @@ def _parse_book_chapter_verses(args: list[str]) -> tuple[str, int, list[int]]:
     else:
         verses_list = _parse_verses_spec(verses_arg)
     return book, chapter_val, verses_list
+
+def _parse_book_chapter(args: list[str]) -> tuple[str, int]:
+    if not args:
+        raise ValueError("Missing book/chapter")
+    joined = " ".join(args).strip()
+    match = re.match(r"^(?P<book>.+?)\s+(?P<chapter>\d+)$", joined)
+    if match:
+        book = match.group("book").strip()
+        chapter_val = int(match.group("chapter"))
+        return book, chapter_val
+    if len(args) < 2:
+        raise ValueError("Missing book/chapter")
+    chapter = args[-1]
+    book = " ".join(args[:-1]).strip()
+    if not book:
+        raise ValueError("Missing book name")
+    try:
+        chapter_val = int(chapter)
+    except ValueError:
+        raise ValueError(f"Invalid chapter: {chapter}")
+    return book, chapter_val
+
+
+def _parse_translations_arg(arg: str) -> list[str]:
+    if os.path.isfile(arg):
+        translations_json = _read_file(arg)
+    else:
+        translations_json = _json_array(arg, "string")
+    translations_json = _uppercase_translations(translations_json)
+    try:
+        translations_list = json.loads(translations_json)
+    except Exception as exc:
+        raise ValueError(f"Invalid JSON: {exc}")
+    if not isinstance(translations_list, list) or not translations_list:
+        raise ValueError("translations list is empty!")
+    return translations_list
+
+
 
 
 
@@ -538,24 +572,41 @@ def main(argv: list[str]) -> int:
             raw = _curl_get(f"{BASE_URL}/get-books/{translation}/")
             _print_json(raw, raw_json)
             return 0
+
         if cmd in ("-c", "--chapter"):
-            if len(rest) < 3:
-                print("Usage: bolls --chapter <translation> <book> <chapter>", file=sys.stderr)
+            if len(rest) < 2:
+                print("Usage: bolls --chapter <translation(s)> <book> <chapter>", file=sys.stderr)
                 return 2
-            translation = _norm_translation(rest[0])
-            book = rest[1]
-            chapter = rest[2]
-            book_id = _book_to_id(translation, book)
+            translations_list = _parse_translations_arg(rest[0])
+            ref_args = rest[1:]
+            book, chapter_val = _parse_book_chapter(ref_args)
             jq_prefix = _choose_jq_prefix(include_all, add_comments)
-            raw = _curl_get(f"{BASE_URL}/get-chapter/{translation}/{book_id}/{chapter}/")
+            if len(translations_list) == 1:
+                translation = translations_list[0]
+                book_id = _book_to_id(translation, book)
+                raw = _curl_get(f"{BASE_URL}/get-chapter/{translation}/{book_id}/{chapter_val}/")
+                _print_json(raw, raw_json, jq_prefix)
+                return 0
+            first_translation = translations_list[0]
+            book_id = _book_to_id(first_translation, book)
+            verses_list = list(range(1, PARALLEL_CHAPTER_MAX_VERSE + 1))
+            body_obj = {
+                "translations": translations_list,
+                "verses": verses_list,
+                "book": book_id,
+                "chapter": chapter_val,
+            }
+            body = json.dumps(body_obj)
+            raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
             _print_json(raw, raw_json, jq_prefix)
             return 0
+
 
         if cmd in ("-v", "--verse"):
             if not rest:
                 print(
-                    "Usage: bolls --verse <translation> <book> <chapter> <verse(s)> "
-                    "or: bolls --verse <translation> <book> <chapter>:<verse(s)>",
+                    "Usage: bolls --verse <translation(s)> <book> <chapter> <verse(s)> "
+                    "or: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
                     file=sys.stderr,
                 )
                 return 2
@@ -565,36 +616,49 @@ def main(argv: list[str]) -> int:
                 raw = _curl_post(f"{BASE_URL}/get-verses/", body)
                 _print_json(raw, raw_json, jq_prefix)
                 return 0
-            translation = _norm_translation(rest[0])
+            translations_list = _parse_translations_arg(rest[0])
             ref_args = rest[1:]
             if not ref_args:
                 print(
-                    "Usage: bolls --verse <translation> <book> <chapter> <verse(s)> "
-                    "or: bolls --verse <translation> <book> <chapter>:<verse(s)>",
+                    "Usage: bolls --verse <translation(s)> <book> <chapter> <verse(s)> "
+                    "or: bolls --verse <translation(s)> <book> <chapter>:<verse(s)>",
                     file=sys.stderr,
                 )
                 return 2
             book, chapter_val, verses_list = _parse_book_chapter_verses(ref_args)
-            book_id = _book_to_id(translation, book)
-            body_obj = [
-                {
-                    "translation": translation,
-                    "book": book_id,
-                    "chapter": chapter_val,
-                    "verses": verses_list,
-                }
-            ]
+            if len(translations_list) == 1:
+                translation = translations_list[0]
+                book_id = _book_to_id(translation, book)
+                body_obj = [
+                    {
+                        "translation": translation,
+                        "book": book_id,
+                        "chapter": chapter_val,
+                        "verses": verses_list,
+                    }
+                ]
+                body = json.dumps(body_obj)
+                raw = _curl_post(f"{BASE_URL}/get-verses/", body)
+                _print_json(raw, raw_json, jq_prefix)
+                return 0
+            first_translation = translations_list[0]
+            book_id = _book_to_id(first_translation, book)
+            body_obj = {
+                "translations": translations_list,
+                "verses": verses_list,
+                "book": book_id,
+                "chapter": chapter_val,
+            }
             body = json.dumps(body_obj)
-            raw = _curl_post(f"{BASE_URL}/get-verses/", body)
+            raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
             _print_json(raw, raw_json, jq_prefix)
             return 0
 
-
         if cmd in ("-p", "--parallel"):
+
             if not rest:
                 print(
-                    "Usage: bolls --parallel <translations> <book> <chapter> <verse(s)> "
-                    "or: bolls --parallel <translations> <book> <chapter>:<verse(s)>",
+                    "Usage: bolls --parallel <translations> <book> <chapter>:<verse(s)>",
                     file=sys.stderr,
                 )
                 return 2
@@ -629,48 +693,65 @@ def main(argv: list[str]) -> int:
             _print_json(raw, raw_json, jq_prefix)
             return 0
 
+
         if cmd in ("-s", "--search"):
 
             if len(rest) < 2:
                 print(
-                    "Usage: bolls --search <translation> <search term> "
-                    "[--match-case] [--match-whole] "
-                    "[--book <book/ot/nt>] [--page <#>] [--limit <#>]",
+                    "Usage: bolls --search <translation> [--match-case] [--match-whole] "
+                    "[--book <book/ot/nt>] [--page <#>] [--limit <#>] <search term>",
                     file=sys.stderr,
                 )
                 return 2
             translation = _norm_translation(rest[0])
-            piece = rest[1]
-            opts = rest[2:]
+            opts = rest[1:]
             match_case = None
             match_whole = None
             book = None
             page = None
             limit = None
+            search_parts = []
             i = 0
             while i < len(opts):
                 opt = opts[i]
-                if opt in ("--match_case", "--match-case", "-m"):
-                    match_case = True
-                elif opt in ("--match_whole", "--match-whole", "-w"):
-                    match_whole = True
-                elif opt in ("--book", "-B"):
-                    if i + 1 >= len(opts):
-                        raise ValueError("Missing value for --book")
-                    book = opts[i + 1]
-                    i += 2
-                elif opt in ("--page", "-P"):
-                    if i + 1 >= len(opts):
-                        raise ValueError("Missing value for --page")
-                    page = opts[i + 1]
-                    i += 2
-                elif opt in ("--limit", "--page-limit", "-l"):
-                    if i + 1 >= len(opts):
-                        raise ValueError("Missing value for --limit")
-                    limit = opts[i + 1]
-                    i += 2
-                else:
+                if opt == "--":
+                    search_parts = opts[i + 1 :]
+                    break
+                if opt.startswith("-"):
+                    if opt in ("--match_case", "--match-case", "-m"):
+                        match_case = True
+                        i += 1
+                        continue
+                    if opt in ("--match_whole", "--match-whole", "-w"):
+                        match_whole = True
+                        i += 1
+                        continue
+                    if opt in ("--book", "-B"):
+                        if i + 1 >= len(opts):
+                            raise ValueError("Missing value for --book")
+                        book = opts[i + 1]
+                        i += 2
+                        continue
+                    if opt in ("--page", "-P"):
+                        if i + 1 >= len(opts):
+                            raise ValueError("Missing value for --page")
+                        page = opts[i + 1]
+                        i += 2
+                        continue
+                    if opt in ("--limit", "--page-limit", "-l"):
+                        if i + 1 >= len(opts):
+                            raise ValueError("Missing value for --limit")
+                        limit = opts[i + 1]
+                        i += 2
+                        continue
                     raise ValueError(f"Unknown search option: {opt}")
+                search_parts = opts[i:]
+                break
+            if not search_parts:
+                raise ValueError("Missing search term")
+            piece = " ".join(search_parts).strip()
+            if not piece:
+                raise ValueError("Missing search term")
             if book:
                 if book.lower() in ("ot", "nt"):
                     book = book.lower()
@@ -680,9 +761,9 @@ def main(argv: list[str]) -> int:
                     book = str(_book_to_id(translation, book))
             query = f"search={_urlencode(piece)}"
             if match_case is not None:
-                query += f"&match_case={_urlencode("true")}"
+                query += f"&match_case={_urlencode('true')}"
             if match_whole is not None:
-                query += f"&match_whole={_urlencode("true")}"
+                query += f"&match_whole={_urlencode('true')}"
             if book is not None:
                 query += f"&book={_urlencode(book)}"
             if page is not None:
@@ -694,6 +775,7 @@ def main(argv: list[str]) -> int:
             return 0
 
         if cmd in ("-D", "--define"):
+
             if len(rest) < 2:
                 print("Usage: bolls --define <dictionary> <Hebrew/Greek word>", file=sys.stderr)
                 return 2
