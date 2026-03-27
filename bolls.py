@@ -21,7 +21,7 @@ except Exception:
     jqmod = None
 
 BASE_URL = "https://bolls.life"
-PARALLEL_CHAPTER_MAX_VERSE = 500
+PARALLEL_CHAPTER_MAX_VERSE = 300
 
 JQ_PRETTY_FILTER = r"""
 
@@ -68,7 +68,7 @@ fmt(.;0)
 JQ_TEXT_COMMENT = r"""
 
 def keep_text_comment:
-  if type == "array" then map(keep_text_comment)
+  if type == "array" then map(keep_text_comment) | map(select(. != null and . != ""))
   elif type == "object" then
     if (has("comment") and .comment != null) then
       [ .text, {comment} ]
@@ -85,7 +85,7 @@ keep_text_comment
 JQ_TEXT_ONLY = r"""
 
 def keep_text_only:
-  if type == "array" then map(keep_text_only)
+  if type == "array" then map(keep_text_only) | map(select(. != null and . != ""))
   elif type == "object" then
     .text
   else .
@@ -126,7 +126,7 @@ Command flags (choose one):
   -s / --search <translation> [options] <search term>
   Search verses by text
 
-  Search options (choose any amount or none):
+  Search options (choose any amount or none when using -s):
     -m / --match-case
     Make search case-sensitive
 
@@ -141,6 +141,7 @@ Command flags (choose one):
     
     -l / --page-limit <#>
     Limits the number of pages of search results
+
 
 Notes:
   <translation> must be the abbreviation, not the full name (case-insensitive). Multiple translations are separated by commas.
@@ -696,7 +697,7 @@ def main(argv: list[str]) -> int:
             if len(rest) < 2:
                 print(
                     "Usage: bolls --search <translation> [--match-case] [--match-whole] "
-                    "[--book <book/ot/nt>] [--page <#>] [--limit <#>] <search term>",
+                    "[--book <book/ot/nt>] [--page <#>] [--page-limit <#>] <search term>",
                     file=sys.stderr,
                 )
                 return 2
@@ -725,19 +726,19 @@ def main(argv: list[str]) -> int:
                         continue
                     if opt in ("--book", "-B"):
                         if i + 1 >= len(opts):
-                            raise ValueError("Missing value for --book")
+                            raise ValueError("Usage: bolls --book <book/ot/nt>")
                         book = opts[i + 1]
                         i += 2
                         continue
                     if opt in ("--page", "-p"):
                         if i + 1 >= len(opts):
-                            raise ValueError("Missing value for --page")
+                            raise ValueError("Usage: bolls --page <#>")
                         page = opts[i + 1]
                         i += 2
                         continue
                     if opt in ("--limit", "--page-limit", "-l"):
                         if i + 1 >= len(opts):
-                            raise ValueError("Missing value for --limit")
+                            raise ValueError("Usage: --page-limit <#>")
                         limit = opts[i + 1]
                         i += 2
                         continue
