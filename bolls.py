@@ -22,6 +22,7 @@ except Exception:
 
 BASE_URL = "https://bolls.life"
 PARALLEL_CHAPTER_MAX_VERSE = 300
+_MAX_VERSE_CACHE: dict[tuple[str, int, int], int] = {}
 
 JQ_PRETTY_FILTER = r"""
 
@@ -115,7 +116,8 @@ Command flags (choose one):
   List all books of a chosen translation
 
   -v / --verses <translation(s)> <book> <chapter>[:<verse(s)>]
-  Get one or multiple verses from the same chapter (omit verses for full chapter)
+  Get one or multiple verses (omit verses for full chapter).
+  Use slashes to get verses from multiple places at once.
 
   -r / --random <translation>
   Get a single random verse
@@ -166,7 +168,8 @@ Examples:
   bolls --verses nlt,nkjv genesis 1
   bolls -v NIV Luke 2:15-17
   bolls --verses niv,nkjv genesis 1:1-3 -c
-  bolls -v niv genesis 1
+  bolls -v nlt genesis 1:1-3 / esv luke 2 / kjv,nkjv deuteronomy 6:5
+  bolls --verses niv genesis 1
   bolls -s ylt -m -w -l 3 -p 1 Jesus wept
   bolls --search YLT --match-case --match-whole --page-limit 3 --page 1 Jesus wept
   bolls -D BDBT אֹ֑ור
@@ -295,6 +298,73 @@ def _print_json(
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
+
+
+
+def _split_slash_groups(args: list[str]) -> list[list[str]]:
+    groups = []
+    current = []
+    for token in args:
+        if "/" not in token:
+            current.append(token)
+            continue
+        parts = token.split("/")
+        for i, part in enumerate(parts):
+            part = part.strip()
+            if part:
+                current.append(part)
+            if i < len(parts) - 1:
+                if current:
+                    groups.append(current)
+                    current = []
+        # if token ends with '/', current is already flushed
+    if current:
+        groups.append(current)
+    return groups
+
+
+def _run_verses(rest: list[str], include_all: bool, add_comments: bool, raw_json: bool) -> int:
+    if not rest:
+        print(
+            "Usage: bolls --verses <translation(s)> <book> <chapter>[:<verse(s)>]",
+            file=sys.stderr,
+        )
+        return 2
+    jq_prefix = _choose_jq_prefix(include_all, add_comments)
+    if len(rest) == 1:
+        body = _normalize_get_verses_json(rest[0])
+        raw = _curl_post(f"{BASE_URL}/get-verses/", body)
+        _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
+        return 0
+    translations_list = _parse_translations_arg(rest[0])
+    ref_args = rest[1:]
+    if not ref_args:
+        print(
+            "Usage: bolls --verses <translation(s)> <book> <chapter>[:<verse(s)>]",
+            file=sys.stderr,
+        )
+        return 2
+    mode, book, chapter_val, verses_list = _parse_v_reference(ref_args)
+    body_obj_list = []
+    for translation in translations_list:
+        book_id = _book_to_id(translation, book)
+        if mode == "chapter":
+            max_verse = _max_verse_for_chapter(translation, book_id, chapter_val)
+            verses = list(range(1, max_verse + 1))
+        else:
+            verses = verses_list
+        body_obj_list.append(
+            {
+                "translation": translation,
+                "book": book_id,
+                "chapter": chapter_val,
+                "verses": verses,
+            }
+        )
+    body = json.dumps(body_obj_list)
+    raw = _curl_post(f"{BASE_URL}/get-verses/", body)
+    _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
+    return 0
 
 def _norm_translation(s: str) -> str:
     return s.upper()
@@ -475,6 +545,49 @@ def _parse_v_reference(args: list[str]) -> tuple[str, str, int, list[int] | None
 
 
 
+def _max_verse_for_chapter(translation: str, book_id: int, chapter: int) -> int:
+    cache_key = (translation.upper(), int(book_id), int(chapter))
+    cached = _MAX_VERSE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    limit = 32
+    while True:
+        verses = list(range(1, limit + 1))
+        body = json.dumps(
+            [
+                {
+                    "translation": translation,
+                    "book": book_id,
+                    "chapter": chapter,
+                    "verses": verses,
+                }
+            ]
+        )
+        raw = _curl_post(f"{BASE_URL}/get-verses/", body)
+        try:
+            data = json.loads(raw)
+        except Exception:
+            _MAX_VERSE_CACHE[cache_key] = PARALLEL_CHAPTER_MAX_VERSE
+            return PARALLEL_CHAPTER_MAX_VERSE
+        verses_out = []
+        if isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, list):
+                for item in first:
+                    if isinstance(item, dict):
+                        v = item.get("verse")
+                        if isinstance(v, int):
+                            verses_out.append(v)
+        max_verse = max(verses_out) if verses_out else 0
+        if max_verse < limit:
+            _MAX_VERSE_CACHE[cache_key] = max_verse
+            return max_verse
+        if limit >= PARALLEL_CHAPTER_MAX_VERSE:
+            _MAX_VERSE_CACHE[cache_key] = limit
+            return limit
+        limit = min(limit * 2, PARALLEL_CHAPTER_MAX_VERSE)
+
+
 
 
 
@@ -625,11 +738,11 @@ def main(argv: list[str]) -> int:
         if cmd in ("-h", "--help"):
             _print_help()
             return 0
-        if cmd in ("-t", "--translations", "--list-translations"):
+        if cmd in ("-t", "--translations"):
             raw = _curl_get(f"{BASE_URL}/static/bolls/app/views/languages.json")
             _print_json(raw, raw_json)
             return 0
-        if cmd in ("-d", "--dictionaries", "--list-dictionaries"):
+        if cmd in ("-d", "--dictionaries"):
             raw = _curl_get(f"{BASE_URL}/static/bolls/app/views/dictionaries.json")
             _print_json(raw, raw_json)
             return 0
@@ -642,146 +755,20 @@ def main(argv: list[str]) -> int:
             _print_json(raw, raw_json)
             return 0
 
-        if cmd in ("--chapter"):
-            if len(rest) < 2:
-                print("Usage: bolls --chapter <translation(s)> <book> <chapter>", file=sys.stderr)
-                return 2
-            translations_list = _parse_translations_arg(rest[0])
-            ref_args = rest[1:]
-            book, chapter_val = _parse_book_chapter(ref_args)
-            jq_prefix = _choose_jq_prefix(include_all, add_comments)
-            if len(translations_list) == 1:
-                translation = translations_list[0]
-                book_id = _book_to_id(translation, book)
-                raw = _curl_get(f"{BASE_URL}/get-chapter/{translation}/{book_id}/{chapter_val}/")
-                _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                return 0
-            first_translation = translations_list[0]
-            book_id = _book_to_id(first_translation, book)
-            verses_list = list(range(1, PARALLEL_CHAPTER_MAX_VERSE + 1))
-            body_obj = {
-                "translations": translations_list,
-                "verses": verses_list,
-                "book": book_id,
-                "chapter": chapter_val,
-            }
-            body = json.dumps(body_obj)
-            raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
-            _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-            return 0
 
 
 
         if cmd in ("-v", "--verses"):
-            if not rest:
-                print(
-                    "Usage: bolls --verses <translation(s)> <book> <chapter>[:<verse(s)>]",
-                    file=sys.stderr,
-                )
-                return 2
-            jq_prefix = _choose_jq_prefix(include_all, add_comments)
-            if len(rest) == 1:
-                body = _normalize_get_verses_json(rest[0])
-                raw = _curl_post(f"{BASE_URL}/get-verses/", body)
-                _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                return 0
-            translations_list = _parse_translations_arg(rest[0])
-            ref_args = rest[1:]
-            if not ref_args:
-                print(
-                    "Usage: bolls --verses <translation(s)> <book> <chapter>[:<verse(s)>]",
-                    file=sys.stderr,
-                )
-                return 2
-            mode, book, chapter_val, verses_list = _parse_v_reference(ref_args)
-            if mode == "chapter":
-                if len(translations_list) == 1:
-                    translation = translations_list[0]
-                    book_id = _book_to_id(translation, book)
-                    raw = _curl_get(f"{BASE_URL}/get-chapter/{translation}/{book_id}/{chapter_val}/")
-                    _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                    return 0
-                first_translation = translations_list[0]
-                book_id = _book_to_id(first_translation, book)
-                verses_list = list(range(1, PARALLEL_CHAPTER_MAX_VERSE + 1))
-                body_obj = {
-                    "translations": translations_list,
-                    "verses": verses_list,
-                    "book": book_id,
-                    "chapter": chapter_val,
-                }
-                body = json.dumps(body_obj)
-                raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
-                _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                return 0
-            if len(translations_list) == 1:
-                translation = translations_list[0]
-                book_id = _book_to_id(translation, book)
-                body_obj = [
-                    {
-                        "translation": translation,
-                        "book": book_id,
-                        "chapter": chapter_val,
-                        "verses": verses_list,
-                    }
-                ]
-                body = json.dumps(body_obj)
-                raw = _curl_post(f"{BASE_URL}/get-verses/", body)
-                _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                return 0
-            first_translation = translations_list[0]
-            book_id = _book_to_id(first_translation, book)
-            body_obj = {
-                "translations": translations_list,
-                "verses": verses_list,
-                "book": book_id,
-                "chapter": chapter_val,
-            }
-            body = json.dumps(body_obj)
-            raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
-            _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
+            groups = _split_slash_groups(rest)
+            if len(groups) <= 1:
+                return _run_verses(rest, include_all, add_comments, raw_json)
+            for group in groups:
+                if not group:
+                    continue
+                rc = _run_verses(group, include_all, add_comments, raw_json)
+                if rc != 0:
+                    return rc
             return 0
-
-        if cmd in ("--parallel"):
-
-
-            if not rest:
-                print(
-                    "Usage: bolls --parallel <translations> <book> <chapter>:<verse(s)>",
-                    file=sys.stderr,
-                )
-                return 2
-            jq_prefix = _choose_jq_prefix(include_all, add_comments)
-            if len(rest) == 1:
-                body = _normalize_parallel_json(rest[0])
-                raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
-                _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-                return 0
-            translations_arg = rest[0]
-            ref_args = rest[1:]
-            if os.path.isfile(translations_arg):
-                translations_json = _read_file(translations_arg)
-            else:
-                translations_json = _json_array(translations_arg, "string")
-            translations_json = _uppercase_translations(translations_json)
-            try:
-                translations_list = json.loads(translations_json)
-            except Exception as exc:
-                raise ValueError(f"Invalid JSON: {exc}")
-            book, chapter_val, verses_list = _parse_book_chapter_verses(ref_args)
-            first_translation = _first_translation(translations_json)
-            book_id = _book_to_id(first_translation, book)
-            body_obj = {
-                "translations": translations_list,
-                "verses": verses_list,
-                "book": book_id,
-                "chapter": chapter_val,
-            }
-            body = json.dumps(body_obj)
-            raw = _curl_post(f"{BASE_URL}/get-parallel-verses/", body)
-            _print_json(raw, raw_json, jq_prefix, drop_translation_only=(include_all or raw_json))
-            return 0
-
 
         if cmd in ("-s", "--search"):
 
