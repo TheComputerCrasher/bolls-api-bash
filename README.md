@@ -1,6 +1,8 @@
 # Bolls API command-line client
 A utility for easily accessing the [bolls.life API](https://bolls.life/api/) to get specific portions of the Bible from a CLI. Human-readable text is the default, but can be changed to raw JSON for scripting or whatever with the ```-j``` / ```--raw-json``` flag (see [Usage](README.md#Usage) section below). 
 
+This script has only been tested on English translations, but it should be general enough that it works with other languages as well.
+
 ## Dependencies
 [```python3```](https://github.com/python/cpython) (obviously), [```pycurl```](https://pypi.org/project/pycurl/), [```jq```](https://pypi.org/project/jq/), and internet access.
 
@@ -83,6 +85,6 @@ bolls -D BDBT אֹ֑ור
 ```
 
 ## TODO
-* KJV's formatting is messed up because of whatever \<S> is, and the book names are too long
+* Search other same-language translations for book names if the name isn't found in current translation (should fix the NKJV and Psalm[s] bugs, as well as making it a bit more generalized)
 * Maybe figure out how this would work for anyone running bolls.life locally as per the [official docs](https://github.com/Bolls-Bible/bain/blob/master/docs/LOCAL_DEV_WITH_DOCKER_COMPOSER.md).
 * Maybe figure out how I want to share this with the internet, but this is kinda a niche project and anyone can freely edit if they find it so may not be worth it
