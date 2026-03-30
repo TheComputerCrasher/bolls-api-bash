@@ -30,7 +30,7 @@ Command flags (choose one):
 
 * ```-b``` / ```--books``` ```<translation>``` - List all books of a chosen translation
 
-* ```-v``` / ```--verse``` ```<translation(s)> <book> <chapter>[:<verse(s)>]``` - Get text from the Bible
+* ```-v``` / ```--verse``` ```<translation(s)> <book> [chapter[:<verse(s)>]]``` - Get text from the Bible
 
 * ```-r``` / ```--random``` ```<translation>``` - Get a single random verse
 
